@@ -113,9 +113,13 @@ function getBodyRowIndex(rows: NodeListOf<HTMLTableRowElement>) {
 }
 
 function getValueForCell(cell: HTMLTableCellElement) {
+  if (!cell) {
+    return null;
+  }
   const aTags = cell.querySelectorAll("a");
   let value;
-  if (aTags.length) {
+  // Check if there are links and if there is more than one word in the cell
+  if (aTags.length && !cell.textContent?.includes(" ")) {
     value = Array.from(aTags).map((a) => {
       let itemName = (a.href ?? "").replaceAll("_", " ").trim();
       itemName = itemName.match(/[^/\\]+$/)?.[0] ?? "";
@@ -134,6 +138,14 @@ function getValue(cellValue: string) {
   if (cellValue == "Yes" || cellValue == "No") {
     return cellValue == "Yes";
   }
+  cellValue = cellValue.replace(/\[.*\]/, "")
+  // Check exact match
+  for (const item of Object.values(items)) {
+    if (isNaN(+cellValue) && item.name == cellValue) {
+      return { name: item.name, id: item.id };
+    }
+  }
+  // Check partial match
   for (const item of Object.values(items)) {
     if (isNaN(+cellValue) && item.name.includes(cellValue)) {
       return { name: item.name, id: item.id };
