@@ -39,18 +39,20 @@ export default defineEventHandler(async (event) => {
 
   // tableToJson(next);
   // return next?.outerHTML ?? html;
-  return tableToJson(next).sort((a, b) => {
-    if (query.decending && query.decending == "true") {
-      const c = a;
-      a = b;
-      b = c;
-    }
-    const sort = "" + query.sort;
-    if (query.sort && Object.keys(a).includes(sort)) {
-      return a[sort] < b[sort] ? -1 : 1;
-    }
-    return 0;
-  });
+  return {
+    [tableName]: tableToJson(next).sort((a, b) => {
+      if (query.decending && query.decending == "true") {
+        const c = a;
+        a = b;
+        b = c;
+      }
+      const sort = "" + query.sort;
+      if (query.sort && Object.keys(a).includes(sort)) {
+        return a[sort] < b[sort] ? -1 : 1;
+      }
+      return 0;
+    }),
+  };
 });
 
 function tableToJson(table: Element | null | undefined) {
