@@ -69,27 +69,25 @@ function tableToJson(table: Element | null | undefined) {
 
     headers.forEach((header, index) => {
       const cell = cells[index];
-      const a = cell.querySelector("a");
-      let cellText = "";
-      if (a) {
-        const itemName = (a.href ?? "").replaceAll("_", " ").trim();
-        cellText = itemName.match(/[^/\\]+$/)?.[0] ?? "";
+      const aTags = cell.querySelectorAll("a");
+      let value;
+      if (aTags.length) {
+        value = Array.from(aTags).map((a) => {
+          let itemName = (a.href ?? "").replaceAll("_", " ").trim();
+          itemName = itemName.match(/[^/\\]+$/)?.[0] ?? "";
+          return getValue(itemName);
+        });
+        value = value.length > 1 ? value : value[0]
       } else {
-        cellText =
+        const cellText =
           cells[index]?.textContent
             ?.trim()
             .replaceAll(",", "")
             .replaceAll("−", "-") ?? "";
+        value = getValue(cellText);
       }
-      obj[header] = isNaN(+cellText) ? cellText : +cellText;
-      for (const item of Object.values(items)) {
-        if (isNaN(+cellText) && item.name.includes(cellText)) {
-          obj[header] = { name: item.name, id: item.id };
-          break
-        }
-      }
+      obj[header] = value;
     });
-
     data.push(obj);
   }
 
@@ -129,6 +127,15 @@ function getBodyRowIndex(rows: NodeListOf<HTMLTableRowElement>) {
     }
   }
   return 0;
+}
+
+function getValue(cellValue: string) {
+  for (const item of Object.values(items)) {
+    if (isNaN(+cellValue) && item.name.includes(cellValue)) {
+      return { name: item.name, id: item.id };
+    }
+  }
+  return isNaN(+cellValue) ? cellValue : +cellValue;
 }
 
 function formatJsonKey(key: string) {
