@@ -85,6 +85,7 @@ function tableToJson(table: Element | null | undefined) {
       for (const item of Object.values(items)) {
         if (isNaN(+cellText) && item.name.includes(cellText)) {
           obj[header] = { name: item.name, id: item.id };
+          break
         }
       }
     });
