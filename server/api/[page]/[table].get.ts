@@ -69,24 +69,7 @@ function tableToJson(table: Element | null | undefined) {
 
     headers.forEach((header, index) => {
       const cell = cells[index];
-      const aTags = cell.querySelectorAll("a");
-      let value;
-      if (aTags.length) {
-        value = Array.from(aTags).map((a) => {
-          let itemName = (a.href ?? "").replaceAll("_", " ").trim();
-          itemName = itemName.match(/[^/\\]+$/)?.[0] ?? "";
-          return getValue(itemName);
-        });
-        value = value.length > 1 ? value : value[0]
-      } else {
-        const cellText =
-          cells[index]?.textContent
-            ?.trim()
-            .replaceAll(",", "")
-            .replaceAll("−", "-") ?? "";
-        value = getValue(cellText);
-      }
-      obj[header] = value;
+      obj[header] = getValueForCell(cell);
     });
     data.push(obj);
   }
@@ -129,7 +112,28 @@ function getBodyRowIndex(rows: NodeListOf<HTMLTableRowElement>) {
   return 0;
 }
 
+function getValueForCell(cell: HTMLTableCellElement) {
+  const aTags = cell.querySelectorAll("a");
+  let value;
+  if (aTags.length) {
+    value = Array.from(aTags).map((a) => {
+      let itemName = (a.href ?? "").replaceAll("_", " ").trim();
+      itemName = itemName.match(/[^/\\]+$/)?.[0] ?? "";
+      return getValue(itemName);
+    });
+    value = value.length > 1 ? value : value[0];
+  } else {
+    const cellText =
+      cell?.textContent?.trim().replaceAll(",", "").replaceAll("−", "-") ?? "";
+    value = getValue(cellText);
+  }
+  return value;
+}
+
 function getValue(cellValue: string) {
+  if (cellValue == "Yes" || cellValue == "No") {
+    return cellValue == "Yes";
+  }
   for (const item of Object.values(items)) {
     if (isNaN(+cellValue) && item.name.includes(cellValue)) {
       return { name: item.name, id: item.id };
