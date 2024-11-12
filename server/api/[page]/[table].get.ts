@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 
 interface CellData {
-  [key: string]: string | number | {};
+  [key: string]: string | number | boolean | {} | null;
 }
 
 interface ItemInfo {
@@ -47,7 +47,7 @@ export default defineEventHandler(async (event) => {
     }
     const sort = "" + query.sort;
     if (query.sort && Object.keys(a).includes(sort)) {
-      return a[sort] < b[sort] ? -1 : 1;
+      return (a[sort] ?? 0) < (b[sort] ?? 0) ? -1 : 1;
     }
     return 0;
   });
@@ -117,14 +117,23 @@ function getValueForCell(cell: HTMLTableCellElement) {
     return null;
   }
   const aTags = cell.querySelectorAll("a");
+  const amounts = [...(cell.textContent?.matchAll(/(?<=x)\d+/g) ?? [])];
+
+
   let value;
   // Check if there are links and if there is more than one word in the cell
   if (aTags.length && !cell.textContent?.includes(" ")) {
-    value = Array.from(aTags).map((a) => {
+    value = Array.from(aTags).map((a, i) => {
       let itemName = (a.href ?? "").replaceAll("_", " ").trim();
-      itemName = itemName.match(/[^/\\]+$/)?.[0] ?? "";
+      itemName = itemName.match(/[^/\\]+$/)?.[0] ?? ""; // Extract item name
       return getValue(itemName);
     });
+    value.forEach((v,i) => {
+      if (amounts?.[i]) {
+        // @ts-ignore: Type check
+        v.amount = +amounts[i]?.[0]
+      }
+    })
     value = value.length > 1 ? value : value[0];
   } else {
     const cellText =
@@ -138,17 +147,17 @@ function getValue(cellValue: string) {
   if (cellValue == "Yes" || cellValue == "No") {
     return cellValue == "Yes";
   }
-  cellValue = cellValue.replace(/\[.*\]/, "")
+  cellValue = cellValue.replace(/\[.*\]/, "");
   // Check exact match
   for (const item of Object.values(items)) {
     if (isNaN(+cellValue) && item.name == cellValue) {
-      return { name: item.name, id: item.id };
+      return { name: item.name, id: item.id, amount: 1 };
     }
   }
   // Check partial match
   for (const item of Object.values(items)) {
     if (isNaN(+cellValue) && item.name.includes(cellValue)) {
-      return { name: item.name, id: item.id };
+      return { name: item.name, id: item.id, amount: 1 };
     }
   }
   return isNaN(+cellValue) ? cellValue : +cellValue;
