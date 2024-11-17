@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
 
 interface CellData {
-  [key: string]: string | number | boolean | {} | null;
+  [key: string]: string | number | boolean | {} | null | ItemInfo;
 }
 
 interface ItemInfo {
@@ -69,7 +69,11 @@ function tableToJson(table: Element | null | undefined) {
 
     headers.forEach((header, index) => {
       const cell = cells[index];
-      obj[header] = getValueForCell(cell);
+      const value = getValueForCell(cell);
+      // @ts-ignore: Type check
+      if (!obj[header]?.id) {
+        obj[header] = getValueForCell(cell);
+      }
     });
     data.push(obj);
   }
@@ -134,6 +138,8 @@ function getValueForCell(cell: HTMLTableCellElement) {
         v.amount = +amounts[i]?.[0]
       }
     })
+    // console.log(value);
+    
     value = value.length > 1 ? value : value[0];
   } else {
     const cellText =
