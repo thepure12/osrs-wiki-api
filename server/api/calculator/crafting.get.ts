@@ -1,7 +1,7 @@
 // crafting.get.ts
 import { JSDOM } from 'jsdom';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
+import * as fs from 'node:fs'; // Removed =
+import * as path from 'node:path'; // Removed =
 
 // Define an interface for the parsed table row data with camelCase naming
 interface CraftingAction {
@@ -11,15 +11,12 @@ interface CraftingAction {
   };
   level: string;
   xp: number;
-  needed: number;
+  // Removed needed: number; from the interface
   materials: Array<{
     id: number;
     name: string;
-    quantity: number;
+    quantity: number; // This is quantity for 1 craft
   }>;
-  inputCost: number;
-  outputPrice: number;
-  profitLoss: number;
   gpPerXp: number;
   members: boolean;
   costPerCraft: number;
@@ -111,10 +108,10 @@ export default defineEventHandler(async (event) => {
       // Column 3: XP
       rowData.xp = parseFloat(cells[3]?.textContent?.trim() || '0');
 
-      // Column 4: # Needed
-      rowData.needed = parseInt(cells[4]?.textContent?.trim()?.replace(/,/g, '') || '0');
+      // Column 4: # Needed - Parsed internally for calculations, but not added to rowData
+      const neededCrafts = parseInt(cells[4]?.textContent?.trim()?.replace(/,/g, '') || '0');
 
-      // Column 5: Materials (Name, Quantity, and ID)
+      // Column 5: Materials (Name, Quantity per craft, and ID)
       const materials: Array<{ id: number; name: string; quantity: number }> = [];
       const materialsCell = cells[5];
       if (materialsCell) {
@@ -127,10 +124,16 @@ export default defineEventHandler(async (event) => {
                 const materialName = materialLink.textContent?.trim() || '';
                 const regex = new RegExp(`(\\d+,?\\d*)\\s*×\\s*<span[^>]*><a[^>]*href="/w/${materialName.replace(/ /g, '_')}"[^>]*><img[^>]*src="${materialImg.src.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}"[^>]*></a></span> <a[^>]*href="/w/${materialName.replace(/ /g, '_')}"[^>]*>${materialName}</a>`);
                 const match = cellHTML.match(regex);
-                let quantity = 1;
 
+                let totalQuantity = 1;
                 if (match && match[1]) {
-                    quantity = parseInt(match[1].replace(/,/g, ''), 10);
+                    totalQuantity = parseInt(match[1].replace(/,/g, ''), 10);
+                }
+
+                // Calculate quantity for 1 craft using the internally parsed neededCrafts
+                let quantityPerCraft = 0;
+                if (neededCrafts > 0) {
+                    quantityPerCraft = totalQuantity / neededCrafts;
                 }
 
                 const materialId = ITEM_NAMES_TO_IDS[materialName] || 0;
@@ -138,22 +141,15 @@ export default defineEventHandler(async (event) => {
                 materials.push({
                   id: materialId,
                   name: materialName,
-                  quantity: quantity
+                  quantity: quantityPerCraft
                 });
             }
         });
       }
       rowData.materials = materials;
 
-      // Column 6: Input Cost
+      // Column 6: Input Cost - Parsed internally for costPerCraft, but not added to rowData
       const inputCost = parseCurrency(cells[6]?.textContent || '');
-      rowData.inputCost = inputCost;
-
-      // Column 7: Output Price
-      rowData.outputPrice = parseCurrency(cells[7]?.textContent || '');
-
-      // Column 8: Profit/Loss
-      rowData.profitLoss = parseCurrency(cells[8]?.textContent || '');
 
       // Column 9: GP/XP
       rowData.gpPerXp = parseCurrency(cells[9]?.textContent || '');
@@ -161,33 +157,30 @@ export default defineEventHandler(async (event) => {
       // Column 10: Members (boolean)
       rowData.members = !!cells[10]?.querySelector('img[src*="Member_icon.png"]');
 
-      // costPerCraft calculation
-      rowData.costPerCraft = rowData.needed > 0 ? rowData.inputCost / rowData.needed : 0;
+      // costPerCraft calculation - uses the internally parsed inputCost and neededCrafts
+      rowData.costPerCraft = neededCrafts > 0 ? inputCost / neededCrafts : 0;
 
-      // Determine the tool needed (now with ID and Name), with new mould logic
+      // Determine the tool needed (ID and Name), with mould logic
       let toolNeeded: { id: number; name: string; } | null = null;
       const materialsUsed = rowData.materials.map(m => m.name.toLowerCase());
       const outputItemNameLower = rowData.output.name.toLowerCase();
 
-      // Rule: If using a 'bar' and the output is a type of jewellery, use the corresponding mould
       if (materialsUsed.some(name => name.includes('bar'))) {
           if (outputItemNameLower.includes('ring')) {
-              const toolName = 'Ring mould'; // Assuming this exists in your name_to_id.json
+              const toolName = 'Ring mould';
               toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
           } else if (outputItemNameLower.includes('necklace')) {
-              const toolName = 'Necklace mould'; // Assuming this exists in your name_to_id.json
+              const toolName = 'Necklace mould';
               toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
           } else if (outputItemNameLower.includes('amulet')) {
-              const toolName = 'Amulet mould'; // Assuming this exists in your name_to_id.json
+              const toolName = 'Amulet mould';
               toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
           } else if (outputItemNameLower.includes('bracelet')) {
-              const toolName = 'Bracelet mould'; // Assuming this exists in your name_to_id.json
+              const toolName = 'Bracelet mould';
               toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
           }
-          // Add more specific jewellery types if needed (e.g., 'tiara', 'holy symbol')
       }
 
-      // Remaining rules (only apply if a specific mould hasn't been determined)
       if (!toolNeeded) {
           if (materialsUsed.some(name => name.includes('leather') || name.includes('fabric'))) {
               const toolName = 'Needle';
@@ -210,8 +203,8 @@ export default defineEventHandler(async (event) => {
 
     // Sort the data by 'gpPerXp' in descending order (highest to lowest)
     parsedData.sort((a, b) => {
-      const gpXpA = typeof a.gpPerXp === 'number' ? a.gpXp : 0;
-      const gpXpB = typeof b.gpPerXp === 'number' ? b.gpXp : 0;
+      const gpXpA = typeof a.gpPerXp === 'number' ? a.gpPerXp : 0;
+      const gpXpB = typeof b.gpPerXp === 'number' ? b.gpPerXp : 0;
       return gpXpB - gpXpA;
     });
 
