@@ -1,5 +1,8 @@
 // crafting.get.ts
 import { JSDOM } from "jsdom";
+// fs and path are no longer needed for loading name_to_id.json via HTTP
+// import * as fs from 'node:fs';
+// import * as path from 'node:path';
 
 // Define an interface for the parsed table row data with camelCase naming
 interface CraftingAction {
@@ -17,6 +20,7 @@ interface CraftingAction {
   gpPerXp: number;
   members: boolean;
   costPerCraft: number;
+  craftsPerHour: number; // Added craftsPerHour field
   tool: {
     id: number;
     name: string;
@@ -133,7 +137,7 @@ export default defineEventHandler(async (event) => {
         name: outputName,
       };
 
-      // Column 2: Level
+      // Column 2: Level - Now parsed as a number
       rowData.level = parseInt(cells[2]?.textContent?.trim() || "0");
 
       // Column 3: XP
@@ -208,22 +212,63 @@ export default defineEventHandler(async (event) => {
       // costPerCraft calculation
       rowData.costPerCraft = neededCrafts > 0 ? inputCost / neededCrafts : 0;
 
+      // Determine craftsPerHour based on item type
+      const outputNameLower = outputName.toLowerCase();
+      const materialsUsedLower = rowData.materials.map(m => m.name.toLowerCase());
+
+      if (outputNameLower.includes("cut ")) {
+        rowData.craftsPerHour = 2780; // All gems
+      } else if (outputNameLower.includes("battlestaff")) {
+        rowData.craftsPerHour = 2625; // All battle staffs
+      } else if (outputNameLower.includes("dragonhide body")) {
+        rowData.craftsPerHour = 1685; // All dragonhide bodies
+      } else if (outputNameLower.includes("glass")) {
+        rowData.craftsPerHour = 1750; // All glass items
+      } else if (
+        (outputNameLower.includes("ring") ||
+          outputNameLower.includes("necklace") ||
+          outputNameLower.includes("amulet") ||
+          outputNameLower.includes("bracelet"))
+      ) {
+          // Check for gems in materials
+          const hasGemMaterial = materialsUsedLower.some(material =>
+              material.includes("uncut ") || // Common prefix for uncut gems
+              material.includes("sapphire") ||
+              material.includes("emerald") ||
+              material.includes("ruby") ||
+              material.includes("diamond") ||
+              material.includes("dragonstone") ||
+              material.includes("onyx") ||
+              material.includes("zenyte")
+          );
+          const hasBarMaterial = materialsUsedLower.some(material => material.includes("bar"));
+
+          if (hasGemMaterial) {
+              rowData.craftsPerHour = 1400; // All jewellery with a gem
+          } else if (hasBarMaterial) {
+              rowData.craftsPerHour = 1600; // All jewellery with just a bar
+          } else {
+              rowData.craftsPerHour = 0; // Default or unknown jewellery type
+          }
+      } else {
+        rowData.craftsPerHour = 0; // Default for uncategorized items
+      }
+
+
       // Determine the tool needed (ID and Name), with mould logic
       let toolNeeded: { id: number; name: string } | null = null;
-      const materialsUsed = rowData.materials.map((m) => m.name.toLowerCase());
-      const outputItemNameLower = rowData.output.name.toLowerCase();
 
-      if (materialsUsed.some((name) => name.includes("bar"))) {
-        if (outputItemNameLower.includes("ring")) {
+      if (materialsUsedLower.some((name) => name.includes("bar"))) {
+        if (outputNameLower.includes("ring")) {
           const toolName = "Ring mould";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
-        } else if (outputItemNameLower.includes("necklace")) {
+        } else if (outputNameLower.includes("necklace")) {
           const toolName = "Necklace mould";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
-        } else if (outputItemNameLower.includes("amulet")) {
+        } else if (outputNameLower.includes("amulet")) {
           const toolName = "Amulet mould";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
-        } else if (outputItemNameLower.includes("bracelet")) {
+        } else if (outputNameLower.includes("bracelet")) {
           const toolName = "Bracelet mould";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
         }
@@ -231,24 +276,24 @@ export default defineEventHandler(async (event) => {
 
       if (!toolNeeded) {
         if (
-          materialsUsed.some(
+          materialsUsedLower.some(
             (name) => name.includes("leather") || name.includes("fabric")
           )
         ) {
           const toolName = "Needle";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
         } else if (
-          materialsUsed.some(
+          materialsUsedLower.some(
             (name) => name.includes("uncut") || name.includes("shell")
           )
         ) {
           const toolName = "Chisel";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
-        } else if (materialsUsed.some((name) => name.includes("nails"))) {
+        } else if (materialsUsedLower.some((name) => name.includes("nails"))) {
           const toolName = "Hammer";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
         } else if (
-          materialsUsed.some((name) => name.includes("molten glass"))
+          materialsUsedLower.some((name) => name.includes("molten glass"))
         ) {
           const toolName = "Glassblowing pipe";
           toolNeeded = { id: ITEM_NAMES_TO_IDS[toolName] || 0, name: toolName };
