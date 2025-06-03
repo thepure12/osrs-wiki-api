@@ -7,7 +7,7 @@ interface CraftingAction {
     id: number;
     name: string;
   };
-  level: string;
+  level: number;
   xp: number;
   materials: Array<{
     id: number;
@@ -134,7 +134,7 @@ export default defineEventHandler(async (event) => {
       };
 
       // Column 2: Level
-      rowData.level = cells[2]?.textContent?.trim() || "0";
+      rowData.level = parseInt(cells[2]?.textContent?.trim() || "0");
 
       // Column 3: XP
       rowData.xp = parseFloat(cells[3]?.textContent?.trim() || "0");
