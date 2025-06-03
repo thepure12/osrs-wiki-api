@@ -2,7 +2,7 @@
 import { JSDOM } from "jsdom";
 // fs and path are no longer needed for loading name_to_id.json via HTTP
 // import * as fs from 'node:fs';
-// import * as path from 'node:path';
+// import * => path from 'node:path';
 
 // Define an interface for the parsed table row data with camelCase naming
 interface CraftingAction {
@@ -21,7 +21,7 @@ interface CraftingAction {
   members: boolean;
   costPerCraft: number;
   craftsPerHour: number;
-  xpPerHour: number; // Added xpPerHour field
+  xpPerHour: number;
   tool: {
     id: number;
     name: string;
@@ -217,8 +217,11 @@ export default defineEventHandler(async (event) => {
       const outputNameLower = outputName.toLowerCase();
       const materialsUsedLower = rowData.materials.map(m => m.name.toLowerCase());
 
-      if (outputNameLower.includes("cut ")) {
-        rowData.craftsPerHour = 2780; // All gems
+      // Check if material contains an uncut gem
+      const hasUncutGemMaterial = materialsUsedLower.some(material => material.includes("uncut "));
+
+      if (hasUncutGemMaterial) {
+        rowData.craftsPerHour = 2780; // Uncut gems (if material is an uncut gem)
       } else if (outputNameLower.includes("battlestaff")) {
         rowData.craftsPerHour = 2625; // All battle staffs
       } else if (outputNameLower.includes("dragonhide body")) {
@@ -231,7 +234,7 @@ export default defineEventHandler(async (event) => {
           outputNameLower.includes("amulet") ||
           outputNameLower.includes("bracelet"))
       ) {
-          // Check for gems in materials
+          // Check for gems in materials (for jewellery)
           const hasGemMaterial = materialsUsedLower.some(material =>
               material.includes("uncut ") || // Common prefix for uncut gems
               material.includes("sapphire") ||
