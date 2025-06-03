@@ -1,7 +1,9 @@
 // crafting.get.ts
 import { JSDOM } from 'jsdom';
-import * as fs from 'node:fs'; // Removed =
-import * as path from 'node:path'; // Removed =
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+// You might also need 'url' if fileURLToPath is not globally available in Nuxt's environment
+import { fileURLToPath } from 'node:url'; // Import fileURLToPath
 
 // Define an interface for the parsed table row data with camelCase naming
 interface CraftingAction {
@@ -11,7 +13,6 @@ interface CraftingAction {
   };
   level: string;
   xp: number;
-  // Removed needed: number; from the interface
   materials: Array<{
     id: number;
     name: string;
@@ -29,12 +30,21 @@ interface CraftingAction {
 // --- Load the item name to ID map once when the server starts ---
 let ITEM_NAMES_TO_IDS: Record<string, number> = {};
 try {
-  const filePath = path.join(process.cwd(), 'public', 'name_to_id.json');
+  // Corrected file path for ES module context using import.meta.url
+  // This assumes name_to_id.json is in server/data/ relative to your project root,
+  // and crafting.get.ts is in server/api/.
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const filePath = path.resolve(__dirname, '../../server/data/name_to_id.json'); // Adjust path as needed for your exact structure
+  
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   ITEM_NAMES_TO_IDS = JSON.parse(fileContent);
   console.log('name_to_id.json loaded successfully.');
 } catch (error) {
   console.error('Failed to load name_to_id.json:', error);
+  // For a critical file like this, you might want the function to fail
+  // by throwing the error.
+  throw new Error('Failed to initialize application: missing data file.');
 }
 // --- End of map loading ---
 
@@ -130,7 +140,6 @@ export default defineEventHandler(async (event) => {
                     totalQuantity = parseInt(match[1].replace(/,/g, ''), 10);
                 }
 
-                // Calculate quantity for 1 craft using the internally parsed neededCrafts
                 let quantityPerCraft = 0;
                 if (neededCrafts > 0) {
                     quantityPerCraft = totalQuantity / neededCrafts;
@@ -148,7 +157,7 @@ export default defineEventHandler(async (event) => {
       }
       rowData.materials = materials;
 
-      // Column 6: Input Cost - Parsed internally for costPerCraft, but not added to rowData
+      // Column 6: Input Cost - Parsed internally for costPerCraft
       const inputCost = parseCurrency(cells[6]?.textContent || '');
 
       // Column 9: GP/XP
@@ -157,7 +166,7 @@ export default defineEventHandler(async (event) => {
       // Column 10: Members (boolean)
       rowData.members = !!cells[10]?.querySelector('img[src*="Member_icon.png"]');
 
-      // costPerCraft calculation - uses the internally parsed inputCost and neededCrafts
+      // costPerCraft calculation
       rowData.costPerCraft = neededCrafts > 0 ? inputCost / neededCrafts : 0;
 
       // Determine the tool needed (ID and Name), with mould logic
