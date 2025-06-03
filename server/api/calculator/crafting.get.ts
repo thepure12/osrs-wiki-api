@@ -20,7 +20,8 @@ interface CraftingAction {
   gpPerXp: number;
   members: boolean;
   costPerCraft: number;
-  craftsPerHour: number; // Added craftsPerHour field
+  craftsPerHour: number;
+  xpPerHour: number; // Added xpPerHour field
   tool: {
     id: number;
     name: string;
@@ -253,6 +254,9 @@ export default defineEventHandler(async (event) => {
       } else {
         rowData.craftsPerHour = 0; // Default for uncategorized items
       }
+
+      // Calculate xpPerHour
+      rowData.xpPerHour = rowData.craftsPerHour * rowData.xp;
 
 
       // Determine the tool needed (ID and Name), with mould logic
