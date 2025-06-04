@@ -262,8 +262,8 @@ export default defineEventHandler(async (event) => {
       // Calculate xpPerHour
       rowData.xpPerHour = rowData.craftsPerHour * rowData.xp;
 
-      // Calculate gpPerHour
-      rowData.gpPerHour = rowData.craftsPerHour * rowData.costPerCraft;
+      // Calculate gpPerHour using gpPerXp * xpPerHour
+      rowData.gpPerHour = rowData.gpPerXp * rowData.xpPerHour;
 
 
       // Determine the tool needed (ID and Name), with mould logic
