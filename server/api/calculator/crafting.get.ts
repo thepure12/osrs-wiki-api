@@ -2,7 +2,7 @@
 import { JSDOM } from "jsdom";
 // fs and path are no longer needed for loading name_to_id.json via HTTP
 // import * as fs from 'node:fs';
-// import * => path from 'node:path';
+// import * as path from 'node:path';
 
 // Define an interface for the parsed table row data with camelCase naming
 interface CraftingAction {
@@ -22,6 +22,7 @@ interface CraftingAction {
   costPerCraft: number;
   craftsPerHour: number;
   xpPerHour: number;
+  gpPerHour: number; // Added gpPerHour field
   tool: {
     id: number;
     name: string;
@@ -260,6 +261,9 @@ export default defineEventHandler(async (event) => {
 
       // Calculate xpPerHour
       rowData.xpPerHour = rowData.craftsPerHour * rowData.xp;
+
+      // Calculate gpPerHour
+      rowData.gpPerHour = rowData.craftsPerHour * rowData.costPerCraft;
 
 
       // Determine the tool needed (ID and Name), with mould logic
