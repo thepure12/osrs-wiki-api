@@ -19,10 +19,10 @@ interface CraftingAction {
   }>;
   gpPerXp: number;
   members: boolean;
-  costPerCraft: number;
-  craftsPerHour: number;
+  costPerAction: number; // Renamed from costPerCraft
+  actionsPerHour: number; // Renamed from craftsPerHour
   xpPerHour: number;
-  gpPerHour: number; // Added gpPerHour field
+  gpPerHour: number;
   tool: {
     id: number;
     name: string;
@@ -200,7 +200,7 @@ export default defineEventHandler(async (event) => {
       }
       rowData.materials = materials;
 
-      // Column 6: Input Cost - Parsed internally for costPerCraft
+      // Column 6: Input Cost - Parsed internally for costPerAction
       const inputCost = parseCurrency(cells[6]?.textContent || "");
 
       // Column 9: GP/XP
@@ -211,10 +211,10 @@ export default defineEventHandler(async (event) => {
         'img[src*="Member_icon.png"]'
       );
 
-      // costPerCraft calculation
-      rowData.costPerCraft = neededCrafts > 0 ? inputCost / neededCrafts : 0;
+      // costPerAction calculation - Renamed from costPerCraft
+      rowData.costPerAction = neededCrafts > 0 ? inputCost / neededCrafts : 0;
 
-      // Determine craftsPerHour based on item type
+      // Determine actionsPerHour based on item type - Renamed from craftsPerHour
       const outputNameLower = outputName.toLowerCase();
       const materialsUsedLower = rowData.materials.map(m => m.name.toLowerCase());
 
@@ -222,13 +222,13 @@ export default defineEventHandler(async (event) => {
       const hasUncutGemMaterial = materialsUsedLower.some(material => material.includes("uncut "));
 
       if (hasUncutGemMaterial) {
-        rowData.craftsPerHour = 2780; // Uncut gems (if material is an uncut gem)
+        rowData.actionsPerHour = 2780; // Uncut gems (if material is an uncut gem)
       } else if (outputNameLower.includes("battlestaff")) {
-        rowData.craftsPerHour = 2625; // All battle staffs
+        rowData.actionsPerHour = 2625; // All battle staffs
       } else if (outputNameLower.includes("dragonhide body")) {
-        rowData.craftsPerHour = 1685; // All dragonhide bodies
+        rowData.actionsPerHour = 1685; // All dragonhide bodies
       } else if (outputNameLower.includes("glass")) {
-        rowData.craftsPerHour = 1750; // All glass items
+        rowData.actionsPerHour = 1750; // All glass items
       } else if (
         (outputNameLower.includes("ring") ||
           outputNameLower.includes("necklace") ||
@@ -249,18 +249,18 @@ export default defineEventHandler(async (event) => {
           const hasBarMaterial = materialsUsedLower.some(material => material.includes("bar"));
 
           if (hasGemMaterial) {
-              rowData.craftsPerHour = 1400; // All jewellery with a gem
+              rowData.actionsPerHour = 1400; // All jewellery with a gem
           } else if (hasBarMaterial) {
-              rowData.craftsPerHour = 1600; // All jewellery with just a bar
+              rowData.actionsPerHour = 1600; // All jewellery with just a bar
           } else {
-              rowData.craftsPerHour = 0; // Default or unknown jewellery type
+              rowData.actionsPerHour = 0; // Default or unknown jewellery type
           }
       } else {
-        rowData.craftsPerHour = 0; // Default for uncategorized items
+        rowData.actionsPerHour = 0; // Default for uncategorized items
       }
 
       // Calculate xpPerHour
-      rowData.xpPerHour = rowData.craftsPerHour * rowData.xp;
+      rowData.xpPerHour = rowData.actionsPerHour * rowData.xp;
 
       // Calculate gpPerHour using gpPerXp * xpPerHour
       rowData.gpPerHour = rowData.gpPerXp * rowData.xpPerHour;
